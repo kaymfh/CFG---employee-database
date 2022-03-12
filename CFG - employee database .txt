@@ -1,0 +1,197 @@
+#Create relational DB of your choice with minimum 5 tables
+#Set Primary and Foreign Key constraints to create relations between the tables
+
+CREATE DATABASE Project;
+USE Project;
+
+CREATE TABLE employee(
+	emp_id INT NOT NULL,
+	first_name VARCHAR(20) NOT NULL,
+	last_name VARCHAR(20)NOT NULL,
+	birth_day DATE NOT NULL,
+	sex VARCHAR(1),
+	salary INT NOT NULL,
+	sector_id INT,
+	PRIMARY KEY (emp_ID)
+);
+
+CREATE TABLE sector(
+	sector_id INT NOT NULL,
+	sector_name VARCHAR(40) NOT NULL,
+	mgr_id INT,
+	PRIMARY KEY (sector_ID),
+	FOREIGN KEY(mgr_id) REFERENCES employee(emp_id) 
+);
+
+CREATE TABLE client (
+	client_id INT NOT NULL,
+	client_name VARCHAR(40) NOT NULL,
+	sector_id INT,
+	PRIMARY KEY (client_id),
+	FOREIGN KEY(sector_id) REFERENCES sector(sector_id) 
+);
+
+CREATE TABLE credits_approved (
+	emp_id INT NOT NULL,
+	client_id INT NOT NULL,
+	total_credits INT NOT NULL,
+	CONSTRAINT PK_credits_approved PRIMARY KEY(emp_id, client_id),
+    FOREIGN KEY(emp_id) REFERENCES employee(emp_id),
+    FOREIGN KEY(client_id) REFERENCES client(client_id)
+);
+
+CREATE TABLE business_partner (
+	sector_id INT,
+	partner_name VARCHAR(40) NOT NULL,
+	partner_type VARCHAR(40),
+    pr_mgr_id INT,
+	PRIMARY KEY(sector_id, partner_name),
+	FOREIGN KEY(sector_id) REFERENCES sector(sector_id)
+);
+
+select * from employee;
+select * from sector;
+select * from client;
+select * from credits_approved;
+select * from business_partner;
+
+#employee
+INSERT INTO employee VALUES(100, 'Fiona', 'Smith', '1985-10-10', 'F', 100000, 1);
+INSERT INTO employee VALUES(101, 'Sue', 'Miller', '1987-09-11', 'F', 74000, 1);
+INSERT INTO employee VALUES(102, 'Tom', 'Young', '1982-09-12', 'M', 75000, 2);
+INSERT INTO employee VALUES(103, 'Jane', 'Cole', '1991-07-21', 'F', 63000, 2);
+INSERT INTO employee VALUES(104, 'May', 'King', '1992-05-19', 'M', 59000, 3);
+INSERT INTO employee VALUES(105, 'Ross', 'Scott', '1994-02-13', 'M', 39000, 3);
+
+
+#sector
+INSERT INTO sector VALUES(1, 'Corporate', 100);
+INSERT INTO sector VALUES(2, 'SME', 102);
+INSERT INTO sector VALUES(3, 'Business_banking', 104);
+
+
+#client
+INSERT INTO client VALUES(900, 'Appla', 1);
+INSERT INTO client VALUES(901, 'Geegle', 1);
+INSERT INTO client VALUES(902, 'KFE', 1);
+INSERT INTO client VALUES(903, 'Asde', 2);
+INSERT INTO client VALUES(904, 'Lido', 2);
+INSERT INTO client VALUES(905, 'Peta home', 3);
+INSERT INTO client VALUES(906, 'Costo', 3);
+
+
+#business_partner
+INSERT INTO business_partner VALUES(1, 'Paymate', 'Transaction', 101);
+INSERT INTO business_partner VALUES(1, 'Save Insurance', 'Insurance', 101);
+INSERT INTO business_partner VALUES(2, 'Paymate', 'Transaction', 103);
+INSERT INTO business_partner VALUES(2, 'Safe trip', 'Car Hire', 103);
+INSERT INTO business_partner VALUES(3, 'Safe trip', 'Car Hire', 105);
+INSERT INTO business_partner VALUES(3, 'Save Insurance', 'Insurance', 105);
+
+
+#credits_approved
+INSERT INTO credits_approved VALUES(101, 900, 9000);
+INSERT INTO credits_approved VALUES(102, 901, 6000);
+INSERT INTO credits_approved VALUES(102, 902, 3000);
+INSERT INTO credits_approved VALUES(103, 903, 7000);
+INSERT INTO credits_approved VALUES(103, 900, 5000);
+INSERT INTO credits_approved VALUES(104, 901, 6000);
+INSERT INTO credits_approved VALUES(105, 902, 3000);
+INSERT INTO credits_approved VALUES(105, 903, 2000);
+
+
+
+#Using any type of the joins create a view that combines multiple tables in a logical way
+#join to show the names of PR manager for each business partner 
+CREATE VIEW pr_mgr_business_partner AS
+	SELECT e.emp_id, e.first_name, b.partner_name
+	FROM employee AS e
+	JOIN  business_partner AS b
+	ON e.emp_id = b.pr_mgr_id;
+    
+SELECT * FROM  pr_mgr_business_partner;
+    
+#In your database, create a stored function that can be applied to a query in your DB
+#what is the salary grade for each employee?
+DELIMITER //
+CREATE function grade (salary INT)
+RETURNS VARCHAR (5) 
+DETERMINISTIC
+BEGIN
+	DECLARE emp_grade VARCHAR (5);
+	IF salary > 70000 THEN
+		SET emp_grade = 'A';
+	ELSEIF (salary >= 50000 AND salary <= 70000) THEN 
+        SET emp_grade = 'B';
+	ELSEIF salary < 50000 THEN 
+        SET emp_grade = 'C';
+	END IF ;
+	RETURN (emp_grade);
+END // salary
+DELIMITER ;
+
+select 
+	emp_id,
+	first_name,
+	last_name,
+	salary,
+    grade(salary) from employee;
+    
+#Prepare an example query with a subquery to demonstrate how to extract data from your DB for analysis
+	#Preparing invoive for application fees for any credit application over £5000 
+	#1) Find the names of all client who have
+	#2) been given single credits for over £5000 
+
+SELECT cl.client_id, cl.client_name
+FROM client AS cl
+WHERE cl.client_id IN (
+		SELECT cr.client_id
+		FROM credits_approved AS cr
+		WHERE total_credits > 5000
+);
+
+#Create DB diagram where all table relations are shown
+
+#ADV1)In your database, create a trigger and demonstrate how it runs
+USE Project;
+
+select * from employee;
+
+CREATE TABLE order_for_new_joiners (
+	item_to_be_purchased VARCHAR(50)
+);
+ 
+DELIMITER //
+CREATE 
+	TRIGGER order_reminder AFTER INSERT	
+    ON employee
+    FOR EACH ROW BEGIN
+		INSERT INTO order_for_new_joiners VALUES ('Monitor x 1');
+        END //
+DELIMITER ; 	
+
+#test
+INSERT INTO employee VALUES(106, 'Jason', 'Stevenson', '1993-02-13', 'M', 52000, 3);
+
+SELECT * FROM order_for_new_joiners;
+
+#ADV2)Prepare an example query with group by and having to demonstrate how to extract data from your DB for analysis
+#Which colleague is performing better in the SME sector, according to the amount of credits approved ?
+
+Select sector_id from sector where sector_name = 'SME';
+
+#who works in SME?
+select emp_id, first_name from employee
+WHERE sector_id = 2; 
+
+#showing all the applications they have processed
+select total_credits, emp_id  from credits_approved
+WHERE emp_id = 102 OR emp_id = 103;
+
+#Showing the sum instead
+select SUM(cr.total_credits), cr.emp_id, e.first_name
+from credits_approved as cr
+join employee as e
+on cr.emp_id = e.emp_id
+group by emp_id
+having emp_id = 102 OR emp_id = 103;
